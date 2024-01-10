@@ -1,11 +1,16 @@
 name: Documentations & Explorer
 
+# on:
+#   workflow_run:
+#     workflows: ["CI"]
+#     branches: [main]
+#     types: 
+#       - completed
+
 on:
-  workflow_run:
-    workflows: ["CI"]
-    branches: [main]
-    types: 
-      - completed
+  push:
+    branches:
+      - 'temporary-ci-tests'
 
 # on:
 #   push:
@@ -197,8 +202,8 @@ jobs:
           echo "mithril.network" > ./github-pages/CNAME
           echo '<!DOCTYPE html><html><head><meta http-equiv="Refresh" content="0; URL=https://mithril.network/doc"></head></html>' > ./github-pages/index.html
 
-      - name: Mithril / Publish GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
-          publish_dir: ./github-pages
+      # - name: Mithril / Publish GitHub Pages
+      #   uses: peaceiris/actions-gh-pages@v3
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
+      #     publish_dir: ./github-pages
