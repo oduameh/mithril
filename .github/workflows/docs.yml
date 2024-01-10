@@ -1,23 +1,11 @@
 name: Documentations & Explorer
 
-# on:
-#   workflow_run:
-#     workflows: ["CI"]
-#     branches: [main]
-#     types: 
-#       - completed
-
 on:
   push:
     branches:
-      - 'temporary-ci-tests'
-
-# on:
-#   push:
-#     branches:
-#       - 'main'
-#   pull_request:
-#     types: [opened, reopened, synchronize]
+      - 'main'
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 concurrency:
   group: ci-docs-${{ github.ref }}
@@ -102,23 +90,19 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      # - name: Download 'mithril-client-wasm' package
-      #   uses: actions/download-artifact@v3
-      #   with:
-      #     name: mithril-distribution-wasm
-      #     path: mithril-client-wasm
-
       - name: Download built artifacts (mithril-client-wasm)
         uses: dawidd6/action-download-artifact@v2
         with:
           name: mithril-distribution-wasm
           path: mithril-client-wasm
+          commit: ${{ github.sha }}
           workflow: ci.yml
+          workflow_conclusion: success
 
       - name: Unpack 'mithril-client-wasm' package
+        working-directory: mithril-client-wasm
         run:
-          ls -al mithril-client-wasm
-          # tar -xvzf mithril-distribution-wasm.tar.gz
+          tar -xvzf pkg/*.tgz -C pkg/ && mv pkg/package/* pkg/
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -130,6 +114,11 @@ jobs:
       - name: Install dependencies
         working-directory: mithril-explorer
         run: yarn install --frozen-lockfile
+
+      - name: List dependency in node_modules
+        working-directory: mithril-explorer
+        run:
+          ls -al node_modules/@mithril-dev/mithril-client-wasm
       
       - name: Test explorer
         working-directory: mithril-explorer
@@ -209,8 +198,8 @@ jobs:
           echo "mithril.network" > ./github-pages/CNAME
           echo '<!DOCTYPE html><html><head><meta http-equiv="Refresh" content="0; URL=https://mithril.network/doc"></head></html>' > ./github-pages/index.html
 
-      # - name: Mithril / Publish GitHub Pages
-      #   uses: peaceiris/actions-gh-pages@v3
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
-      #     publish_dir: ./github-pages
+      - name: Mithril / Publish GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
+          publish_dir: ./github-pages
