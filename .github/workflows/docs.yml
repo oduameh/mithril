@@ -102,11 +102,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Download 'mithril-client-wasm' package
-        uses: actions/download-artifact@v3
+      # - name: Download 'mithril-client-wasm' package
+      #   uses: actions/download-artifact@v3
+      #   with:
+      #     name: mithril-distribution-wasm
+      #     path: mithril-client-wasm
+
+      - name: Download built artifacts (mithril-client-wasm)
+        uses: dawidd6/action-download-artifact@v2
         with:
           name: mithril-distribution-wasm
-          path: mithril-client-wasm/
+          path: mithril-client-wasm
+          workflow: ci.yml
 
       - name: Unpack 'mithril-client-wasm' package
         run:
