@@ -1,11 +1,18 @@
 name: Documentations & Explorer
 
 on:
-  push:
-    branches:
-      - 'main'
-  pull_request:
-    types: [opened, reopened, synchronize]
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: 
+      - completed
+
+# on:
+#   push:
+#     branches:
+#       - 'main'
+#   pull_request:
+#     types: [opened, reopened, synchronize]
 
 concurrency:
   group: ci-docs-${{ github.ref }}
@@ -89,6 +96,17 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+
+      - name: Download 'mithril-client-wasm' package
+        uses: actions/download-artifact@v3
+        with:
+          name: mithril-distribution-wasm
+          path: mithril-client-wasm/
+
+      - name: Unpack 'mithril-client-wasm' package
+        run:
+          ls -al mithril-client-wasm
+          # tar -xvzf mithril-distribution-wasm.tar.gz
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
