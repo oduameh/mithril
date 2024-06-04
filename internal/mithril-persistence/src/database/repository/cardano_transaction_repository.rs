@@ -255,8 +255,18 @@ impl CardanoTransactionRepository {
         &self,
         block_ranges: Vec<BlockRange>,
     ) -> StdResult<Vec<CardanoTransactionRecord>> {
+        self.get_transaction_by_block_ranges_union(block_ranges)
+            .await
+    }
+
+    pub async fn get_transaction_by_block_ranges_union(
+        &self,
+        block_ranges: Vec<BlockRange>,
+    ) -> StdResult<Vec<CardanoTransactionRecord>> {
         self.connection
-            .fetch_collect(GetCardanoTransactionQueryTmp::by_block_ranges(block_ranges))
+            .fetch_collect(GetCardanoTransactionQueryUnion::by_block_ranges(
+                block_ranges,
+            ))
     }
     pub async fn get_transaction_by_block_ranges_old(
         &self,
@@ -772,35 +782,39 @@ mod tests {
             .await
             .unwrap();
 
-        for i in 0..10 {
-            let start = Instant::now();
-            let block_ranges = (0..10)
-                .into_iter()
-                .map(|i| BlockRange::from_block_number(i * 30))
-                .collect();
+        let nb_iteration = 10;
+        let nb_block_ranges = 10;
+        let block_ranges: Vec<BlockRange> = (0..nb_block_ranges)
+            .into_iter()
+            .map(|i| BlockRange::from_block_number(i * 30))
+            .collect();
 
+        let transaction_ref = repository
+            .get_transaction_by_block_ranges_old(block_ranges.clone())
+            .await
+            .unwrap();
+
+        for i in 0..nb_iteration {
+            let start = Instant::now();
             let transaction_result = repository
-                .get_transaction_by_block_ranges_old(block_ranges)
+                .get_transaction_by_block_ranges_old(block_ranges.clone())
                 .await
                 .unwrap();
 
             let duration = start.elapsed();
             println!("Time elapsed (or) ({i}) is: {:?}", duration);
+            assert_eq!(transaction_ref, transaction_result);
         }
-        for i in 0..10 {
+        for i in 0..nb_iteration {
             let start = Instant::now();
-            let block_ranges = (0..10)
-                .into_iter()
-                .map(|i| BlockRange::from_block_number(i * 30))
-                .collect();
-
             let transaction_result = repository
-                .get_transaction_by_block_ranges(block_ranges)
+                .get_transaction_by_block_ranges_union(block_ranges.clone())
                 .await
                 .unwrap();
 
             let duration = start.elapsed();
             println!("Time elapsed (union) ({i}) is: {:?}", duration);
+            assert_eq!(transaction_ref, transaction_result);
         }
     }
 
@@ -1023,11 +1037,11 @@ mod tests {
 
 use crate::sqlite::{Query, SourceAlias, SqLiteEntity, WhereCondition};
 
-pub struct GetCardanoTransactionQueryTmp {
+pub struct GetCardanoTransactionQueryUnion {
     condition: WhereCondition,
 }
 
-impl GetCardanoTransactionQueryTmp {
+impl GetCardanoTransactionQueryUnion {
     pub fn all() -> Self {
         Self {
             condition: WhereCondition::default(),
@@ -1081,7 +1095,7 @@ impl GetCardanoTransactionQueryTmp {
     }
 }
 
-impl Query for GetCardanoTransactionQueryTmp {
+impl Query for GetCardanoTransactionQueryUnion {
     type Entity = CardanoTransactionRecord;
 
     fn filters(&self) -> WhereCondition {
