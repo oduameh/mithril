@@ -255,6 +255,20 @@ impl CardanoTransactionRepository {
         &self,
         block_ranges: Vec<BlockRange>,
     ) -> StdResult<Vec<CardanoTransactionRecord>> {
+        self.connection
+            .fetch_collect(GetCardanoTransactionQueryTmp::by_block_ranges(block_ranges))
+    }
+    pub async fn get_transaction_by_block_ranges_old(
+        &self,
+        block_ranges: Vec<BlockRange>,
+    ) -> StdResult<Vec<CardanoTransactionRecord>> {
+        self.connection
+            .fetch_collect(GetCardanoTransactionQuery::by_block_ranges(block_ranges))
+    }
+    pub async fn get_transaction_by_block_ranges_jp(
+        &self,
+        block_ranges: Vec<BlockRange>,
+    ) -> StdResult<Vec<CardanoTransactionRecord>> {
         let mut transactions = vec![];
         for block_range in block_ranges {
             let block_range_transactions: Vec<CardanoTransactionRecord> = self
@@ -308,6 +322,8 @@ impl BlockRangeRootRetriever for CardanoTransactionRepository {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use mithril_common::test_utils::CardanoTransactionsBuilder;
 
     use crate::database::query::GetBlockRangeRootQuery;
@@ -739,6 +755,56 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn repository_perf() {
+        let connection = Arc::new(cardano_tx_db_connection().unwrap());
+        let repository = CardanoTransactionRepository::new(connection);
+
+        let transactions: Vec<CardanoTransactionRecord> = CardanoTransactionsBuilder::new()
+            .blocks_per_block_range(10)
+            .max_transactions_per_block(5)
+            // .build_transactions(500)
+            .build_transactions(500000)
+            .into_iter()
+            .map(CardanoTransactionRecord::from)
+            .collect();
+        repository
+            .store_transactions(transactions.clone())
+            .await
+            .unwrap();
+
+        for i in 0..10 {
+            let start = Instant::now();
+            let block_ranges = (0..10)
+                .into_iter()
+                .map(|i| BlockRange::from_block_number(i * 30))
+                .collect();
+
+            let transaction_result = repository
+                .get_transaction_by_block_ranges_old(block_ranges)
+                .await
+                .unwrap();
+
+            let duration = start.elapsed();
+            println!("Time elapsed (or) ({i}) is: {:?}", duration);
+        }
+        for i in 0..10 {
+            let start = Instant::now();
+            let block_ranges = (0..10)
+                .into_iter()
+                .map(|i| BlockRange::from_block_number(i * 30))
+                .collect();
+
+            let transaction_result = repository
+                .get_transaction_by_block_ranges(block_ranges)
+                .await
+                .unwrap();
+
+            let duration = start.elapsed();
+            println!("Time elapsed (union) ({i}) is: {:?}", duration);
+        }
+    }
+
+    #[tokio::test]
     async fn repository_store_block_range() {
         let connection = Arc::new(cardano_tx_db_connection().unwrap());
         let repository = CardanoTransactionRepository::new(connection.clone());
@@ -952,5 +1018,91 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(Some(30), highest);
+    }
+}
+
+use crate::sqlite::{Query, SourceAlias, SqLiteEntity, WhereCondition};
+
+pub struct GetCardanoTransactionQueryTmp {
+    condition: WhereCondition,
+}
+
+impl GetCardanoTransactionQueryTmp {
+    pub fn all() -> Self {
+        Self {
+            condition: WhereCondition::default(),
+        }
+    }
+
+    // Useful in test and probably in the future.
+    pub fn by_transaction_hash(transaction_hash: &TransactionHash) -> Self {
+        Self {
+            condition: WhereCondition::new(
+                "transaction_hash = ?*",
+                vec![Value::String(transaction_hash.to_owned())],
+            ),
+        }
+    }
+
+    pub fn by_transaction_hashes(transactions_hashes: Vec<TransactionHash>) -> Self {
+        let hashes_values = transactions_hashes.into_iter().map(Value::String).collect();
+
+        Self {
+            condition: WhereCondition::where_in("transaction_hash", hashes_values),
+        }
+    }
+
+    pub fn by_block_ranges(block_ranges: Vec<BlockRange>) -> Self {
+        let mut condition = WhereCondition::default();
+        for block_range in block_ranges {
+            condition = condition.or_where(WhereCondition::new(
+                "(block_number >= ?* and block_number < ?*)",
+                vec![
+                    Value::Integer(block_range.start as i64),
+                    Value::Integer(block_range.end as i64),
+                ],
+            ))
+        }
+
+        Self { condition }
+    }
+
+    pub fn between_blocks(range: Range<BlockNumber>) -> Self {
+        let condition = WhereCondition::new(
+            "block_number >= ?*",
+            vec![Value::Integer(range.start as i64)],
+        )
+        .and_where(WhereCondition::new(
+            "block_number < ?*",
+            vec![Value::Integer(range.end as i64)],
+        ));
+
+        Self { condition }
+    }
+}
+
+impl Query for GetCardanoTransactionQueryTmp {
+    type Entity = CardanoTransactionRecord;
+
+    fn filters(&self) -> WhereCondition {
+        self.condition.clone()
+    }
+
+    fn get_definition(&self, condition: &str) -> String {
+        let aliases = SourceAlias::new(&[("{:cardano_tx:}", "cardano_tx")]);
+        let projection = Self::Entity::get_projection().expand(aliases);
+
+        let requests: Vec<String> = condition
+            .split(" or ")
+            .map(|c| format!("select {projection} from cardano_tx where {c}"))
+            .collect();
+        let sql = format!(
+            "select * from ({}) t order by t.block_number, t.transaction_hash",
+            requests.join(" union ")
+        );
+        // println!("SQL union: {sql}");
+        // let sql = format!("select {projection} from cardano_tx where {condition} order by block_number, transaction_hash");
+        // println!("SQL or: {sql}");
+        sql
     }
 }
