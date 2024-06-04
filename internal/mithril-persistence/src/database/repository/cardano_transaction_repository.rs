@@ -275,7 +275,7 @@ impl CardanoTransactionRepository {
         self.connection
             .fetch_collect(GetCardanoTransactionQuery::by_block_ranges(block_ranges))
     }
-    pub async fn get_transaction_by_block_ranges_jp(
+    pub async fn get_transaction_by_block_ranges_multi_request(
         &self,
         block_ranges: Vec<BlockRange>,
     ) -> StdResult<Vec<CardanoTransactionRecord>> {
@@ -803,6 +803,17 @@ mod tests {
 
             let duration = start.elapsed();
             println!("Time elapsed (or) ({i}) is: {:?}", duration);
+            assert_eq!(transaction_ref, transaction_result);
+        }
+        for i in 0..nb_iteration {
+            let start = Instant::now();
+            let transaction_result = repository
+                .get_transaction_by_block_ranges_multi_request(block_ranges.clone())
+                .await
+                .unwrap();
+
+            let duration = start.elapsed();
+            println!("Time elapsed (multi request) ({i}) is: {:?}", duration);
             assert_eq!(transaction_ref, transaction_result);
         }
         for i in 0..nb_iteration {
