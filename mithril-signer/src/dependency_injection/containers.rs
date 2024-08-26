@@ -13,7 +13,7 @@ use tokio::sync::RwLock;
 
 use crate::services::{AggregatorClient, EpochService, SingleSigner, UpkeepService};
 use crate::store::ProtocolInitializerStorer;
-use crate::MetricsService;
+use crate::{MetricsService, SignaturePublisher};
 
 type StakeStoreService = Arc<StakeStore>;
 type CertificateHandlerService = Arc<dyn AggregatorClient>;
@@ -36,6 +36,9 @@ pub struct SignerDependencyContainer {
 
     /// Certificate handler service
     pub certificate_handler: CertificateHandlerService,
+
+    /// Signature publisher service
+    pub signature_publisher: Arc<dyn SignaturePublisher>,
 
     /// Chain Observer service
     pub chain_observer: ChainObserverService,

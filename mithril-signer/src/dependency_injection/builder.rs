@@ -44,8 +44,8 @@ use crate::services::{
 };
 use crate::store::{MKTreeStoreSqlite, ProtocolInitializerStore};
 use crate::{
-    Configuration, MetricsService, HTTP_REQUEST_TIMEOUT_DURATION, SQLITE_FILE,
-    SQLITE_FILE_CARDANO_TRANSACTION,
+    AggregatorHttpSignaturePublisher, Configuration, MetricsService, HTTP_REQUEST_TIMEOUT_DURATION,
+    SQLITE_FILE, SQLITE_FILE_CARDANO_TRANSACTION,
 };
 
 /// The `DependenciesBuilder` is intended to manage Services instance creation.
@@ -252,6 +252,9 @@ impl<'a> DependenciesBuilder<'a> {
             api_version_provider.clone(),
             Some(Duration::from_millis(HTTP_REQUEST_TIMEOUT_DURATION)),
         ));
+        let signature_publisher = Arc::new(AggregatorHttpSignaturePublisher::new(
+            aggregator_client.clone(),
+        ));
 
         let cardano_immutable_snapshot_builder =
             Arc::new(CardanoImmutableFilesFullSignableBuilder::new(
@@ -354,6 +357,7 @@ impl<'a> DependenciesBuilder<'a> {
         let services = SignerDependencyContainer {
             ticker_service,
             certificate_handler: aggregator_client,
+            signature_publisher,
             chain_observer,
             digester,
             single_signer,
