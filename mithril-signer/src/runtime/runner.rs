@@ -452,12 +452,11 @@ mod tests {
 
     use crate::metrics::MetricsService;
     use crate::services::{
-        CardanoTransactionsImporter, DumbAggregatorClient, MithrilEpochService,
-        MithrilSingleSigner, MockTransactionStore, MockUpkeepService, SignerSignableSeedBuilder,
-        SingleSigner,
+        AggregatorHttpSignaturePublisher, CardanoTransactionsImporter, DumbAggregatorClient,
+        MithrilEpochService, MithrilSingleSigner, MockSignaturePublisher, MockTransactionStore,
+        MockUpkeepService, SignerSignableSeedBuilder, SingleSigner,
     };
     use crate::store::ProtocolInitializerStore;
-    use crate::{AggregatorHttpSignaturePublisher, MockSignaturePublisher};
 
     use super::*;
 

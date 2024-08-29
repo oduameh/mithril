@@ -13,6 +13,7 @@ mod aggregator_client;
 mod cardano_transactions;
 mod epoch_service;
 mod signable_builder;
+mod signature_publisher;
 mod single_signer;
 mod upkeep_service;
 
@@ -22,5 +23,6 @@ pub use aggregator_client::*;
 pub use cardano_transactions::*;
 pub use epoch_service::*;
 pub use signable_builder::*;
+pub use signature_publisher::*;
 pub use single_signer::*;
 pub use upkeep_service::*;
