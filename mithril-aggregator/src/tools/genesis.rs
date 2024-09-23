@@ -13,7 +13,7 @@ use mithril_common::{
 };
 
 use crate::database::repository::CertificateRepository;
-use crate::{ProtocolParametersStorer, VerificationKeyStorer};
+use crate::{EpochSettingsStorer, VerificationKeyStorer};
 
 pub struct GenesisToolsDependency {
     /// Cardano network
@@ -32,7 +32,7 @@ pub struct GenesisToolsDependency {
     pub certificate_verifier: Arc<dyn CertificateVerifier>,
 
     /// Protocol parameter store.
-    pub protocol_parameters_store: Arc<dyn ProtocolParametersStorer>,
+    pub protocol_parameters_store: Arc<dyn EpochSettingsStorer>,
 
     /// Certificate store.
     pub certificate_repository: Arc<CertificateRepository>,
@@ -80,7 +80,7 @@ impl GenesisTools {
 
         let protocol_params_epoch = time_point.epoch.offset_to_signer_retrieval_epoch()?;
         let protocol_parameters = protocol_parameters_store
-            .get_protocol_parameters(protocol_params_epoch)
+            .get_epoch_settings(protocol_params_epoch)
             .await?
             .ok_or_else(|| {
                 anyhow!("Missing protocol parameters for epoch {protocol_params_epoch}")
@@ -88,7 +88,7 @@ impl GenesisTools {
 
         let genesis_avk_epoch = time_point.epoch.offset_to_next_signer_retrieval_epoch();
         let genesis_avk_protocol_parameters = protocol_parameters_store
-            .get_protocol_parameters(time_point.epoch.offset_to_signer_retrieval_epoch()?)
+            .get_epoch_settings(time_point.epoch.offset_to_signer_retrieval_epoch()?)
             .await?
             .ok_or_else(|| anyhow!("Missing protocol parameters for epoch {genesis_avk_epoch}"))?;
         let genesis_signers = dependencies

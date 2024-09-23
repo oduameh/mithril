@@ -75,8 +75,8 @@ use crate::{
     tools::{CExplorerSignerRetriever, GcpFileUploader, GenesisToolsDependency, SignersImporter},
     AggregatorConfig, AggregatorRunner, AggregatorRuntime, CertificatePendingStore,
     CompressedArchiveSnapshotter, Configuration, DependencyContainer, DumbSnapshotUploader,
-    DumbSnapshotter, LocalSnapshotUploader, MithrilSignerRegisterer, MultiSigner, MultiSignerImpl,
-    ProtocolParametersStorer, RemoteSnapshotUploader, SingleSignatureAuthenticator,
+    DumbSnapshotter, EpochSettingsStorer, LocalSnapshotUploader, MithrilSignerRegisterer,
+    MultiSigner, MultiSignerImpl, RemoteSnapshotUploader, SingleSignatureAuthenticator,
     SnapshotUploader, SnapshotUploaderType, Snapshotter, SnapshotterCompressionAlgorithm,
     VerificationKeyStorer,
 };
@@ -131,7 +131,7 @@ pub struct DependenciesBuilder {
     pub verification_key_store: Option<Arc<dyn VerificationKeyStorer>>,
 
     /// Protocol parameter store.
-    pub protocol_parameters_store: Option<Arc<dyn ProtocolParametersStorer>>,
+    pub protocol_parameters_store: Option<Arc<dyn EpochSettingsStorer>>,
 
     /// Cardano CLI Runner for the [ChainObserver]
     pub cardano_cli_runner: Option<Box<CardanoCliRunner>>,
@@ -554,9 +554,7 @@ impl DependenciesBuilder {
         Ok(self.verification_key_store.as_ref().cloned().unwrap())
     }
 
-    async fn build_protocol_parameters_store(
-        &mut self,
-    ) -> Result<Arc<dyn ProtocolParametersStorer>> {
+    async fn build_protocol_parameters_store(&mut self) -> Result<Arc<dyn EpochSettingsStorer>> {
         let protocol_parameters_store = EpochSettingsStore::new(
             self.get_sqlite_connection().await?,
             self.configuration.safe_epoch_retention_limit(),
@@ -588,9 +586,7 @@ impl DependenciesBuilder {
     }
 
     /// Get a configured [ProtocolParametersStorer].
-    pub async fn get_protocol_parameters_store(
-        &mut self,
-    ) -> Result<Arc<dyn ProtocolParametersStorer>> {
+    pub async fn get_protocol_parameters_store(&mut self) -> Result<Arc<dyn EpochSettingsStorer>> {
         if self.protocol_parameters_store.is_none() {
             self.protocol_parameters_store = Some(self.build_protocol_parameters_store().await?);
         }

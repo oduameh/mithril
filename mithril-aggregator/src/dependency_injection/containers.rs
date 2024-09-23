@@ -32,9 +32,8 @@ use crate::{
     },
     signer_registerer::SignerRecorder,
     snapshot_uploaders::SnapshotUploader,
-    CertificatePendingStore, ProtocolParametersStorer, SignerRegisterer,
-    SignerRegistrationRoundOpener, SingleSignatureAuthenticator, Snapshotter,
-    VerificationKeyStorer,
+    CertificatePendingStore, EpochSettingsStorer, SignerRegisterer, SignerRegistrationRoundOpener,
+    SingleSignatureAuthenticator, Snapshotter, VerificationKeyStorer,
 };
 
 /// EpochServiceWrapper wraps a [EpochService]
@@ -80,7 +79,7 @@ pub struct DependencyContainer {
     pub verification_key_store: Arc<dyn VerificationKeyStorer>,
 
     /// Protocol parameter store.
-    pub protocol_parameters_store: Arc<dyn ProtocolParametersStorer>,
+    pub protocol_parameters_store: Arc<dyn EpochSettingsStorer>,
 
     /// Chain observer service.
     pub chain_observer: Arc<dyn ChainObserver>,
@@ -194,7 +193,7 @@ impl DependencyContainer {
     pub async fn init_state_from_fixture(&self, fixture: &MithrilFixture, target_epochs: &[Epoch]) {
         for epoch in target_epochs {
             self.protocol_parameters_store
-                .save_protocol_parameters(*epoch, fixture.protocol_parameters())
+                .save_epoch_settings(*epoch, fixture.protocol_parameters())
                 .await
                 .expect("save_protocol_parameters should not fail");
             self.fill_verification_key_store(*epoch, &fixture.signers_with_stake())
@@ -242,7 +241,7 @@ impl DependencyContainer {
         epochs_to_save.push(epoch_to_sign.next());
         for epoch in epochs_to_save {
             self.protocol_parameters_store
-                .save_protocol_parameters(epoch, protocol_parameters.clone())
+                .save_epoch_settings(epoch, protocol_parameters.clone())
                 .await
                 .expect("save_protocol_parameters should not fail");
         }

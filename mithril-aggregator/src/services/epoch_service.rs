@@ -9,7 +9,7 @@ use mithril_common::entities::{Epoch, ProtocolParameters, Signer, SignerWithStak
 use mithril_common::protocol::{MultiSigner as ProtocolMultiSigner, SignerBuilder};
 use mithril_common::StdResult;
 
-use crate::{ProtocolParametersStorer, VerificationKeyStorer};
+use crate::{EpochSettingsStorer, VerificationKeyStorer};
 
 /// Errors dedicated to the CertifierService.
 #[derive(Debug, Error)]
@@ -107,7 +107,7 @@ pub struct MithrilEpochService {
     future_protocol_parameters: ProtocolParameters,
     epoch_data: Option<EpochData>,
     computed_epoch_data: Option<ComputedEpochData>,
-    protocol_parameters_store: Arc<dyn ProtocolParametersStorer>,
+    protocol_parameters_store: Arc<dyn EpochSettingsStorer>,
     verification_key_store: Arc<dyn VerificationKeyStorer>,
 }
 
@@ -115,7 +115,7 @@ impl MithrilEpochService {
     /// Create a new service instance
     pub fn new(
         future_protocol_parameters: ProtocolParameters,
-        protocol_parameters_store: Arc<dyn ProtocolParametersStorer>,
+        protocol_parameters_store: Arc<dyn EpochSettingsStorer>,
         verification_key_store: Arc<dyn VerificationKeyStorer>,
     ) -> Self {
         Self {
@@ -147,7 +147,7 @@ impl MithrilEpochService {
     ) -> StdResult<ProtocolParameters> {
         let parameters = self
             .protocol_parameters_store
-            .get_protocol_parameters(epoch)
+            .get_epoch_settings(epoch)
             .await
             .with_context(|| format!("Epoch service failed to obtain {name}"))?
             .ok_or(EpochServiceError::UnavailableData(epoch, name.to_string()))?;
@@ -165,7 +165,7 @@ impl MithrilEpochService {
         );
 
         self.protocol_parameters_store
-            .save_protocol_parameters(
+            .save_epoch_settings(
                 recording_epoch,
                 self.future_protocol_parameters.clone(),
             )
@@ -521,7 +521,7 @@ mod tests {
     use std::collections::{BTreeSet, HashMap};
 
     use crate::services::epoch_service::tests::ServiceBuilderParameters::WithFutureProtocolParameters;
-    use crate::store::FakeProtocolParametersStorer;
+    use crate::store::FakeEpochSettingsStorer;
     use crate::VerificationKeyStore;
 
     use super::*;
@@ -617,7 +617,7 @@ mod tests {
             }
         }
 
-        let protocol_parameters_store = FakeProtocolParametersStorer::new(vec![
+        let protocol_parameters_store = FakeEpochSettingsStorer::new(vec![
             (
                 signer_retrieval_epoch,
                 current_epoch_fixture.protocol_parameters(),
@@ -797,7 +797,7 @@ mod tests {
 
         let inserted_protocol_parameters = service
             .protocol_parameters_store
-            .get_protocol_parameters(epoch.offset_to_protocol_parameters_recording_epoch())
+            .get_epoch_settings(epoch.offset_to_protocol_parameters_recording_epoch())
             .await
             .unwrap_or_else(|_| {
                 panic!(
