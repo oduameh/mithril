@@ -23,5 +23,20 @@ drop table db_version;
 alter table new_db_version rename to db_version;
             ",
         ),
+        // Migration 2
+        // Create the `signed_beacon` table.
+        SqlMigration::new(
+            2,
+            r"
+create table if not exists signed_beacon (
+    epoch                       integer     not null,
+    beacon                      text        not null,
+    signed_entity_type_id       integer     not null,
+    initiated_at                text        not null,
+    signed_at                   text        not null
+    primary key (epoch, beacon, signed_entity_type_id)
+);
+            ",
+        ),
     ]
 }
